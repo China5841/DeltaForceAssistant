@@ -121,13 +121,24 @@ jobs:
           ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
           ANDROID_HOME: ${{ github.workspace }}/android-sdk
         run: |
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info -Dkotlin.verbose=true 2>&1 | tail -200
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Find APK
+        run: |
+          echo "=== Finding APK files ==="
+          find . -name "*.apk" -type f 2>/dev/null | head -20
+          echo "=== Listing app/build/outputs ==="
+          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs dir"
+          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk dir"
+          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug dir"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: DeltaForceAssistant-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/*/debug/*.apk
           retention-days: 30
 
       - name: Build Release APK (if signing configured)
@@ -142,5 +153,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DeltaForceAssistant-release
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/*/release/*.apk
           retention-days: 30
