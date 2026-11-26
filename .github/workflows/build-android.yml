@@ -121,7 +121,10 @@ jobs:
           ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
           ANDROID_HOME: ${{ github.workspace }}/android-sdk
         run: |
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          set -euo pipefail
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
+          echo "=== BUILD EXIT CODE: ${PIPESTATUS[0]} ==="
+          tail -100 build.log
 
       - name: Find APK
         run: |
