@@ -16,7 +16,7 @@ jobs:
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.configureondemand=true"
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.configureondemand=true -Dkotlin.compiler.execution.strategy=in-process"
       JAVA_TOOL_OPTIONS: "-Xmx3g"
 
     steps:
@@ -42,7 +42,6 @@ jobs:
           mkdir -p android-sdk
           cd android-sdk
           
-          # Try multiple mirrors
           for url in \
             "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" \
             "https://mirrors.cloud.tencent.com/android/repository/commandlinetools-linux-11076708_latest.zip" \
@@ -61,9 +60,7 @@ jobs:
             exit 1
           fi
           
-          # Unzip - creates cmdline-tools/ directory
           unzip -q cmdline-tools.zip
-          # sdkmanager expects structure: <sdk>/cmdline-tools/latest/
           mv cmdline-tools cmdline-tools.latest
           mkdir -p cmdline-tools
           mv cmdline-tools.latest cmdline-tools/latest
@@ -124,7 +121,7 @@ jobs:
           ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
           ANDROID_HOME: ${{ github.workspace }}/android-sdk
         run: |
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info -Dkotlin.verbose=true 2>&1 | tail -200
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
