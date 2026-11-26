@@ -55,17 +55,19 @@ jobs:
             exit 1
           fi
           
-          # Ensure target directory exists
-          mkdir -p latest
-          unzip -q cmdline-tools.zip -d latest
+          # Unzip - the zip contains a 'cmdline-tools' directory inside
+          unzip -q cmdline-tools.zip
+          # Move contents up one level (zip extracts to cmdline-tools/)
+          mv cmdline-tools/* .
+          rmdir cmdline-tools
           rm cmdline-tools.zip
           cd ../..
           
           export ANDROID_SDK_ROOT=$PWD/android-sdk
-          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/bin:$ANDROID_SDK_ROOT/platform-tools
           
           echo "=== Accepting licenses ==="
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager --licenses > /dev/null 2>&1 || true
           
           echo "=== Installing packages ==="
           # Install with retry
@@ -76,7 +78,7 @@ jobs:
             "cmake;3.22.1"; do
             echo "Installing: $pkg"
             for i in 1 2 3; do
-              if $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "$pkg"; then
+              if $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager "$pkg"; then
                 echo "  ✓ $pkg"
                 break
               else
@@ -87,10 +89,10 @@ jobs:
           done
           
           echo "=== Verifying installation ==="
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --list_installed | grep -E "platforms|build-tools|ndk|cmake"
+          $ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager --list_installed | grep -E "platforms|build-tools|ndk|cmake"
           
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/bin" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
       - name: Cache Android SDK
