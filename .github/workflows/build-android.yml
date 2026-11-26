@@ -55,8 +55,9 @@ jobs:
             exit 1
           fi
           
-          unzip -q cmdline-tools.zip
-          mv cmdline-tools latest
+          # Ensure target directory exists
+          mkdir -p latest
+          unzip -q cmdline-tools.zip -d latest
           rm cmdline-tools.zip
           cd ../..
           
