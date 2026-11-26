@@ -16,8 +16,9 @@ jobs:
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.configureondemand=true -Dkotlin.compiler.execution.strategy=in-process"
-      JAVA_TOOL_OPTIONS: "-Xmx3g"
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.configureondemand=true -Dkotlin.compiler.execution.strategy=in-process -Dkotlin.daemon.jvm.options=-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx4g"
+      _JAVA_OPTIONS: "-Xmx4g"
 
     steps:
       - name: Checkout code
@@ -34,11 +35,11 @@ jobs:
         run: |
           set -euo pipefail
           
-          echo "=== Installing dependencies ==="
+          echo "=== [1/6] Installing system dependencies ==="
           sudo apt-get update -qq
           sudo apt-get install -qq -y wget unzip
           
-          echo "=== Downloading cmdline-tools (with retry) ==="
+          echo "=== [2/6] Downloading cmdline-tools ==="
           mkdir -p android-sdk
           cd android-sdk
           
@@ -48,7 +49,7 @@ jobs:
             "https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-11076708_latest.zip"; do
             echo "Trying: $url"
             if wget -q --timeout=60 --tries=3 "$url" -O cmdline-tools.zip; then
-              echo "Downloaded successfully"
+              echo "Downloaded successfully from $url"
               break
             else
               echo "Failed, trying next mirror..."
@@ -60,7 +61,9 @@ jobs:
             exit 1
           fi
           
+          echo "=== [3/6] Extracting cmdline-tools ==="
           unzip -q cmdline-tools.zip
+          # The zip extracts to cmdline-tools/, but sdkmanager expects <sdk>/cmdline-tools/latest/
           mv cmdline-tools cmdline-tools.latest
           mkdir -p cmdline-tools
           mv cmdline-tools.latest cmdline-tools/latest
@@ -71,10 +74,10 @@ jobs:
           export ANDROID_HOME=$PWD/android-sdk
           export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
           
-          echo "=== Accepting licenses ==="
+          echo "=== [4/6] Accepting licenses ==="
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
           
-          echo "=== Installing packages ==="
+          echo "=== [5/6] Installing SDK packages ==="
           for pkg in \
             "platforms;android-34" \
             "build-tools;34.0.0" \
@@ -92,8 +95,13 @@ jobs:
             done
           done
           
-          echo "=== Verifying installation ==="
+          echo "=== [6/6] Verifying installation ==="
           $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --list_installed | grep -E "platforms|build-tools|ndk|cmake"
+          
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
       - name: Cache Android SDK
         uses: actions/cache@v4
@@ -103,7 +111,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-android-sdk-
 
-      - name: Cache Gradle packages
+      - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
@@ -116,18 +124,34 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Configure Gradle properties
+        run: |
+          cat >> gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+          org.gradle.daemon=false
+          org.gradle.parallel=false
+          org.gradle.configureondemand=true
+          kotlin.compiler.execution.strategy=in-process
+          kotlin.daemon.jvm.options=-Xmx2g
+          android.useAndroidX=true
+          android.enableJetifier=false
+          kotlin.code.style=official
+          EOF
+          cat gradle.properties
+
       - name: Build Debug APK
         env:
           ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
           ANDROID_HOME: ${{ github.workspace }}/android-sdk
         run: |
           set -euo pipefail
+          echo "=== Starting Gradle build ==="
           ./gradlew :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
           EXIT_CODE=${PIPESTATUS[0]}
           echo "=== BUILD EXIT CODE: $EXIT_CODE ==="
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "=== LAST 300 LINES OF BUILD LOG ==="
-            tail -300 build.log
+            echo "=== LAST 500 LINES OF BUILD LOG ==="
+            tail -500 build.log
           fi
           exit $EXIT_CODE
 
