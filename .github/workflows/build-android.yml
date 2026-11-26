@@ -16,6 +16,8 @@ jobs:
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.configureondemand=true"
+      JAVA_TOOL_OPTIONS: "-Xmx3g"
 
     steps:
       - name: Checkout code
@@ -62,7 +64,6 @@ jobs:
           # Unzip - creates cmdline-tools/ directory
           unzip -q cmdline-tools.zip
           # sdkmanager expects structure: <sdk>/cmdline-tools/latest/
-          # The zip extracts to cmdline-tools/, so rename to latest
           mv cmdline-tools cmdline-tools.latest
           mkdir -p cmdline-tools
           mv cmdline-tools.latest cmdline-tools/latest
@@ -77,7 +78,6 @@ jobs:
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
           
           echo "=== Installing packages ==="
-          # Install with retry
           for pkg in \
             "platforms;android-34" \
             "build-tools;34.0.0" \
@@ -124,7 +124,7 @@ jobs:
           ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
           ANDROID_HOME: ${{ github.workspace }}/android-sdk
         run: |
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
